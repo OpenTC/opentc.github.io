@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="generator">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OTC Init Code Generator</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/highlight.default.min.css" rel="stylesheet">
+    <script src="js/angular.min.js"></script>
+    <script src="js/script.js"></script>
+</head>
+
+<body ng-controller="GeneratorController as c">
+    <div class="container">
+        <h1>OpenTC Generator</h1>
+        <form>
+            <div class="form-group">
+                <label>Variable:</label>
+                <input class="form-control" type="text" ng-model="varName">
+                <small class="form-text text-muted">The name of your variable in the code</small>
+            </div>
+            <div class="form-group">
+                <label>Node name:</label>
+                <input class="form-control" type="text" ng-model="nodeName">
+                <small class="form-text text-muted">Your node's name. This will be transmitted during the connection phase</small>
+            </div>
+            <div class="form-group">
+                <label>Address:</label>
+                <div class="input-group">
+                    <span class="input-group-addon">
+                        <input type="checkbox" ng-model="isRoot"> Root
+                    </span>
+                    <input class="form-control" type="text" ng-model="nodeAddr">
+                </div>
+                <small class="form-text text-muted">
+                    The node's address. 16 bit unsigned value, acts as an IP address
+                    <strong>Expressed here as decimal!</strong>
+                </small>
+            </div>
+            <div class="form-group">
+                <label>Connections:</label>
+                <div class="row">
+                    <div class="col-md-4 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Number
+                            </span>
+                            <input class="form-control" type="text" ng-model="conNumber">
+                        </div>
+                        <small class="form-text text-muted">Maximum number of connections. The actual size will be {{conNumber - 0 + 1}}, as there is a null terminator</small>
+                    </div>
+                    <div class="col-md-4 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Children
+                            </span>
+                            <input class="form-control" type="text" ng-model="conChildren">
+                        </div>
+                        <small class="form-text text-muted">Maximum number of children in each connection. 
+                            The actual size will be {{conChildren - 0 + 1}}, as there is a null terminator. 
+                            You can fine-tune this for each connection by changing the initialization code
+                        </small>
+                    </div>
+                    <div class="col-md-4 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Buffer Size
+                            </span>
+                            <input class="form-control" type="text" ng-model="conBufSize">
+                        </div>
+                        <small class="form-text text-muted">Size of the connection incomming message buffer. This defines the maximum message size this node can handle</small>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Variables:</label>
+                <div class="input-group">
+                    <span class="input-group-addon">
+                        Max
+                    </span>
+                    <input class="form-control" type="text" ng-model="varsMax">
+                </div>
+                <small class="form-text text-muted">Maximum number of variables. The actual size will be {{varsMax - 0 + 1}}, as there is a null terminator</small>
+                <br>
+                <div class="row" ng-repeat="v in vars track by $index">
+                    <div class="col-md-2 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Id
+                            </span>
+                            <input class="form-control" type="text" ng-model="v.id">
+                        </div>
+                        <small class="form-text text-muted">
+                            Variable id. <strong>Used here in decimal!</strong>
+                        </small>
+                    </div>
+                    <div class="col-md-4 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Type
+                            </span>
+                            <select ng-options="key for (key, value) in c.vartypes" ng-model="v.type"></select>
+                        </div>
+                        <small class="form-text text-muted">
+                            Variable type ({{v.type | hex}})
+                        </small>
+                    </div>
+                    <div class="col-md-2 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Length
+                            </span>
+                            <input class="form-control" type="text" ng-model="v.length" ng-disabled="v.type > 61440">
+                        </div>
+                        <small class="form-text text-muted">
+                            Variable length (for arrays)
+                        </small>
+                    </div>
+                    <div class="col-md-2 col-xs-12" style="text-align: center">
+                        Storage size: <strong>{{v | nbytes}}</strong>
+                    </div>
+                    <div class="col-md-2 col-xs-12" style="text-align: right">
+                        <button class="btn btn-danger" type="button" ng-click="c.removeVar($index)">Remove</button>
+                    </div>
+                </div>
+                <br>
+                <div class="container-fluid">
+                    <div class="row">
+                        <button class="btn btn-success" ng-click="c.addVar()">Add Variable</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Services:</label>
+                <div class="row">
+                    <div class="col-md-6 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Max
+                            </span>
+                            <input class="form-control" type="text" ng-model="servMax">
+                        </div>
+                        <small class="form-text text-muted">Maximum number of services. The actual size will be {{servMax - 0 + 1}}, as there is a null terminator</small>
+                    </div>
+                    <div class="col-md-6 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Store
+                            </span>
+                            <input class="form-control" type="text" ng-model="servStoreMax">
+                        </div>
+                        <small class="form-text text-muted">
+                            Used to store calls to remote services. 
+                            The maximum number of outgoing requests that can be active at the same time
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Message buffer:</label>
+                <div class="input-group">
+                    <span class="input-group-addon">
+                        Size
+                    </span>
+                    <input class="form-control" type="text" ng-model="mesBufSize">
+                </div>
+                <small class="form-text text-muted">
+                    Size of the outgoing message buffer. This is used by the node to construct messages, and defines the
+                    maximum message length it can generate.
+                </small>
+            </div>
+            <div class="form-group">
+                <label>Callbacks:</label>
+                <div class="input-group">
+                    <span class="input-group-addon">
+                        Max
+                    </span>
+                    <input class="form-control" type="text" ng-model="varCbMax">
+                </div>
+                <small class="form-text text-muted">
+                    Size of the variable callback request list, which holds all update requests callback.
+                    The actual size will be {{varCbMax - 0 + 1}}, as there is a null terminator
+                </small>
+            </div>
+            <div class="form-group">
+                <label>Root Var Requests:</label>
+                <div class="input-group">
+                    <span class="input-group-addon">
+                        Max
+                    </span>
+                    <input class="form-control" type="text" ng-model="rootVarReqMax">
+                </div>
+                <small class="form-text text-muted">
+                    The maximum number updated requests stored by the root node.
+                    The actual size will be {{rootVarReqMax - 0 + 1}}, as there is a null terminator
+                </small>
+            </div>
+            <div class="form-group">
+                <label>Serials:</label>
+                <div class="row" ng-repeat="serial in serials track by $index">
+                    <div class="col-md-5 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Port
+                            </span>
+                            <input class="form-control" type="text" ng-model="serial.port">
+                        </div>
+                        <small class="form-text text-muted">
+                            Connection port. <strong>Used here in decimal!</strong>
+                        </small>
+                    </div>
+                    <div class="col-md-5 col-xs-12">
+                        <div class="input-group">
+                            <span class="input-group-addon">
+                                Buffer
+                            </span>
+                            <input class="form-control" type="text" ng-model="serial.buffer">
+                        </div>
+                        <small class="form-text text-muted">
+                            Length of the circular buffer
+                        </small>
+                    </div>
+                    <div class="col-md-2 col-xs-12" style="text-align: right">
+                        <button class="btn btn-danger" type="button" ng-click="c.removeSerial($index)">Remove</button>
+                    </div>
+                </div>
+                <br>
+                <div class="container-fluid">
+                    <div class="row">
+                        <button class="btn btn-success" ng-click="c.addSerial()">Add Connection</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div style="font-family: monospace; white-space: pre;">#include "OpenTC.h"
+
+/** OpenTC Node static variables **/
+// the node
+static TcNode_t {{varName}};
+// connections
+static TcConnection_t {{varName}}Connection[{{conNumber}}];
+// in buffer for each connection
+static uint8_t {{varName}}ConnectionBuffer[{{conNumber}}][{{conBufSize}}];
+// children vector
+static TcAddress_t {{varName}}ConnectionChildren[{{conNumber}}][{{conChildren - 0 + 1}}];
+// connection holder
+static TcConnection_t* {{varName}}Connections[{{conNumber - 0 + 1}}];
+// variable list
+static TcVar_t* {{varName}}Vars[{{varsMax - 0 + 1}}];
+// service list
+static TcService_t* {{varName}}Services[{{servMax - 0 + 1}}];
+// temporary outbound message buffer
+static uint8_t {{varName}}MessageBuffer[{{mesBufSize}}];
+// callback list
+static TcVarRequest_t* {{varName}}VarCallbacks[{{varCbMax - 0 + 1}}];
+// service storage
+static TcServiceStore_t {{varName}}ServiceStore[{{servStoreMax}}];
+// serial connections store
+static TcSerial_t* {{varName}}Serials[{{serials.length}}];
+</div>
+<div style="font-family: monospace; white-space: pre;" ng-repeat="serial in serials">
+// Serial {{serial.port}}
+static uint8_t* {{varName}}Serial{{serial.port}}Buffer[{{serial.buffer}}];
+
+TcSerial_t {{varName}}Serial{{serial.port}} = {
+    .id = {{serial.port | hex}},
+    .size = {{serial.buffer}},
+    .buffer = (uint8_t*) {{varName}}Serial{{serial.port}}Buffer[{{serial.buffer}}]
+};
+</div>
+<div ng-if="isRoot" style="font-family: monospace; white-space: pre;">
+// var request list (root node only)
+static TcVarRequestRoot_t {{varName}}VarRequests[{{rootVarReqMax - 0 + 1}}];
+
+</div>
+<div style="font-family: monospace; white-space: pre;" ng-repeat="i in conNumber | range">
+/* {{varName}} send function for connection {{$index}} */
+void {{varName}}Send{{$index}}(TcNode_t* node, TcConnection_t* connection, uint8_t* data, TcLength_t length);
+</div>
+<div style="font-family: monospace; white-space: pre;" ng-repeat="v in vars">
+// Variable {{v.id | hex}}
+static TcVarstore_t {{varName}}Var{{v.id}}Store;
+
+TcVar_t {{varName}}Var{{v.id}} = {
+    .id = {{v.id | hex}},
+    .value.type = {{v.type | typename}},
+    .value.store = &{{varName}}Var{{v.id}}Store
+};
+
+static uint8_t {{varName}}Var{{v.id}}Buffer[{{v | nbytes}}];
+</div>
+<div style="font-family: monospace; white-space: pre;">
+
+int main() {
+    tcInit();
+    
+    {{varName}}.addr = {{isRoot ? "TC_ROOT" : nodeAddr | hex}};
+    {{varName}}.name = {{nodeName ? '"' + nodeName + '"' : "NULL"}};
+    {{varName}}.connections = {{varName}}Connections;
+    {{varName}}.connectionsMax = {{conNumber - 0 + 1}};
+    {{varName}}.vars = {{varName}}Vars;
+    {{varName}}.varsMax = {{varsMax - 0 + 1}};
+    {{varName}}.services = {{varName}}Services;
+    {{varName}}.servicesMax = {{servMax - 0 + 1}};
+    {{varName}}.messageBuffer = {{varName}}MessageBuffer;
+    {{varName}}.messageBufferLength = {{mesBufSize}};
+    {{varName}}.root = {{isRoot ? 'TRUE' : 'FALSE'}};
+    {{varName}}.varCallbacks = (const TcVarRequest_t**) {{varName}}VarCallbacks;
+    {{varName}}.varCallbacksMax = {{varCbMax - 0 + 1}};
+    {{varName}}.serviceStore = {{varName}}ServiceStore;
+    {{varName}}.serviceStoreMax = {{servStoreMax}};
+    {{varName}}.serials = {{varName}}Serials;
+    {{varName}}.serialsMax = {{serials.length}};
+    </div><div ng-if="isRoot" style="font-family: monospace; white-space: pre;">
+    {{varName}}.varRequests = {{varName}}VarRequests;
+    {{varName}}.varRequestsMax = {{rootVarReqMax - 0 + 1}};
+</div><div style="font-family: monospace; white-space: pre;" >
+    tcInitNode(&{{varName}});
+    </div>
+    <div style="font-family: monospace; white-space: pre;" ng-repeat="i in conNumber | range">
+    /* init connection {{$index}} */
+    {{varName}}Connection[{{$index}}].handler = &{{varName}}Send{{$index}};
+    {{varName}}Connection[{{$index}}].inBuffer = {{varName}}ConnectionBuffer[{{$index}}];
+    {{varName}}Connection[{{$index}}].inBufferLength = {{conBufSize}};
+    {{varName}}Connection[{{$index}}].children = {{varName}}ConnectionChildren[{{$index}}];
+    {{varName}}Connection[{{$index}}].childrenMax = {{conChildren - 0 + 1}};
+
+    tcInitConnection(&{{varName}}, &{{varName}}Connection[{{$index}}]);
+    </div>
+<div ng-repeat="v in vars">
+    <div style="font-family: monospace; white-space: pre;" ng-if="isArray(v)">
+    // Variable {{v.id | hex}}
+    {{varName}}Var{{v.id}}Store.array.storage = {{varName}}Var{{v.id}}Buffer;
+    tcRegisterVariable(&{{varName}}, {{varName}}Var{{v.id}});
+    </div>
+    <div style="font-family: monospace; white-space: pre;" ng-if="!isArray(v)">
+    // Variable {{v.id | hex}}
+    {{varName}}Var{{v.id}}Store.buffer = {{varName}}Var{{v.id}}Buffer;,
+    tcRegisterVariable(&{{varName}}, {{varName}}Var{{v.id}});
+    </div>
+</div>
+    <div style="font-family: monospace; white-space: pre;" ng-repeat="serial in serials">
+    // Serial {{serial.port | hex}}
+    tcSerialBegin(&{{varName}}, &{{varName}}Serial{{serial.port}});
+    </div>
+
+    <div style="font-family: monospace; white-space: pre;">
+    return 0;
+}
+</div>
+    </div><br><br><br>
+    <script src="js/jquery-3.2.1.min.js"></script>
+</body>
+
+</html>
